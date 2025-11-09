@@ -2,10 +2,11 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import z, { hash } from "zod";
 import bcrypt from "bcrypt";
-import { UserModel, ContentModel } from "./db";
+import { UserModel, ContentModel, LinkModel } from "./db";
 import auth from "./middleware";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { random } from "./utils";
 dotenv.config();
 const port = process.env.PORT || 3000;
 
@@ -146,9 +147,87 @@ app.get("/api/v1/content", auth, (req, res) => {
   }
 });
 
-app.delete("/api/v1/content", (req, res) => {});
-app.get("/api/v1/brain/:shareLink", (req, res) => {});
-app.post("/api/v1/brain/share", (req, res) => {});
+app.delete("/api/v1/content", auth, async (req, res) => {
+  const { contentId } = req.body;
+  await ContentModel.deleteMany({
+    contentId,
+    userId: req.userId,
+  });
+
+  res.json({
+    message: "Content deleted successfully",
+  });
+});
+
+app.get("/api/v1/brain/:shareLink", auth, async (req, res) => {
+  const share = req.body.share;
+  if (share) {
+    const content = await LinkModel.findOne({
+      userId: req.userId,
+    });
+
+    if (content) {
+      res.json({
+        hash: content.hash,
+      });
+      return;
+    }
+
+    const hash = random(10);
+    await LinkModel.create({
+      userId: req.userId,
+      hash: hash,
+    });
+
+    res.json({
+      hash,
+    });
+  } else {
+    await LinkModel.deleteOne({
+      userId: req.userId,
+    });
+
+    res.json({
+      message: "Removed Link",
+    });
+  }
+});
+
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+  const hash = req.params.shareLink;
+
+  const link = await LinkModel.findOne({
+    hash,
+  });
+
+  if (!link) {
+    res.status(411).json({
+      message: "Sorry incorrect input",
+    });
+    return;
+  }
+
+  const content = await ContentModel.find({
+    userId: link.userId,
+  });
+
+  console.log(link);
+  const user = await UserModel.findOne({
+    _id: link.userId,
+  });
+
+  if (!user) {
+    res.status(411).json({
+      message: "User not found, error should ideally not happen",
+    });
+    return;
+  }
+
+  res.json({
+    username: user.username,
+    content: content,
+  });
+});
 
 db_connect();
 app.listen(3000);
