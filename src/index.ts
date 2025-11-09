@@ -32,6 +32,10 @@ const db_connect = async () => {
   }
 };
 
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
+
 app.post("/api/v1/signup", async (req, res) => {
   const inputzod = z.object({
     username: z
