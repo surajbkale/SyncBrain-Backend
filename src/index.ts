@@ -45,7 +45,7 @@ app.post("/api/v1/signup", async (req, res) => {
   if (!validInput.success) {
     const errorMessage = validInput.error;
     res.status(411).json({
-      message: "Invalid format",
+      message: errorMessage || "Invalid format",
       error: errorMessage,
     });
     return;
@@ -61,10 +61,15 @@ app.post("/api/v1/signup", async (req, res) => {
         username,
         password: hashedPassword,
       });
-      res.status(200).json({
-        message: "User Created Successfully",
+    } else {
+      res.status(500).json({
+        message: "User name is taken",
       });
+      return;
     }
+    res.status(200).json({
+      message: "User Created Successfully",
+    });
   } catch (error) {
     res.status(500).json({
       message: "internal server error",
@@ -111,6 +116,25 @@ app.post("/api/v1/signin", async (req, res) => {
     }
   } else {
     res.status(401).json({ message: "Invalid Credentails" });
+  }
+});
+
+function generateGuestToken() {
+  return jwt.sign(
+    { role: "guest", userId: `guest_${Date.now()}` },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "1h" }
+  );
+}
+
+app.post("/api/v1/guest", async (req, res) => {
+  try {
+    const token = generateGuestToken();
+    res.json({ token, username: "Guest" });
+  } catch (error) {
+    res.status(500).json({
+      message: "Guest login failed",
+    });
   }
 });
 
