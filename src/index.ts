@@ -4,14 +4,17 @@ import z, { hash } from "zod";
 import bcrypt from "bcrypt";
 import { UserModel, ContentModel, LinkModel } from "./db";
 import auth from "./middleware";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
 import { random } from "./utils";
+import mongoose from "mongoose";
+import cors from "cors";
+
+import dotenv from "dotenv";
 dotenv.config();
 const port = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const db_connect = async () => {
   try {
@@ -97,6 +100,7 @@ app.post("/api/v1/signin", async (req, res) => {
           res.status(200).json({
             message: "User logged in successfully",
             token,
+            username,
           });
         }
       } else {
@@ -132,10 +136,10 @@ app.post("/api/v1/content", auth, async (req, res) => {
   }
 });
 
-app.get("/api/v1/content", auth, (req, res) => {
+app.get("/api/v1/content", auth, async (req, res) => {
   const userId = req.userId;
   try {
-    const content = ContentModel.find({
+    const content = await ContentModel.find({
       userId: userId,
     }).populate("userId", "username");
 
@@ -159,7 +163,7 @@ app.delete("/api/v1/content", auth, async (req, res) => {
   });
 });
 
-app.get("/api/v1/brain/:shareLink", auth, async (req, res) => {
+app.post("/api/v1/brain/share", auth, async (req, res) => {
   const share = req.body.share;
   if (share) {
     const content = await LinkModel.findOne({
