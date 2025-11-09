@@ -23,7 +23,9 @@ const ContentSchema = new mongoose.Schema({
   },
   link: {
     type: String,
-    require: true,
+  },
+  content: {
+    type: String,
   },
   tags: [
     {
