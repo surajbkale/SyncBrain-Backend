@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import z, { hash } from "zod";
 import bcrypt from "bcrypt";
 import { UserModel, ContentModel } from "./db";
+import auth from "./middleware";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 dotenv.config();
@@ -108,14 +109,43 @@ app.post("/api/v1/signin", async (req, res) => {
   }
 });
 
-app.post("/api/v1/content", async (req, res) => {
+app.post("/api/v1/content", auth, async (req, res) => {
   const { link, title, type } = req.body;
   try {
-    await ContentModel.create({});
-  } catch (error) {}
+    await ContentModel.create({
+      title: title,
+      link: link,
+      type: type,
+      tag: [],
+      userId: req.userId,
+    });
+
+    res.status(200).json({
+      message: "Content added successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Internal Server error",
+    });
+  }
 });
 
-app.get("/api/v1/content", (req, res) => {});
+app.get("/api/v1/content", auth, (req, res) => {
+  const userId = req.userId;
+  try {
+    const content = ContentModel.find({
+      userId: userId,
+    }).populate("userId", "username");
+
+    res.status(200).json({ content });
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal Server error",
+    });
+  }
+});
+
 app.delete("/api/v1/content", (req, res) => {});
 app.get("/api/v1/brain/:shareLink", (req, res) => {});
 app.post("/api/v1/brain/share", (req, res) => {});

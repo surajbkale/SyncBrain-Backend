@@ -15,3 +15,5 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
     res.status(403).json({ warning: "You are not logged in" });
   }
 };
+
+export default auth;
