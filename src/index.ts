@@ -14,7 +14,13 @@ const port = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://syncbrain.bitalchemy.app", "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 const db_connect = async () => {
   try {
