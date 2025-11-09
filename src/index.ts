@@ -2,7 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import z, { hash } from "zod";
 import bcrypt from "bcrypt";
-import { UserModel } from "./db";
+import { UserModel, ContentModel } from "./db";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 dotenv.config();
@@ -108,7 +108,13 @@ app.post("/api/v1/signin", async (req, res) => {
   }
 });
 
-app.post("/api/v1/content", (req, res) => {});
+app.post("/api/v1/content", async (req, res) => {
+  const { link, title, type } = req.body;
+  try {
+    await ContentModel.create({});
+  } catch (error) {}
+});
+
 app.get("/api/v1/content", (req, res) => {});
 app.delete("/api/v1/content", (req, res) => {});
 app.get("/api/v1/brain/:shareLink", (req, res) => {});

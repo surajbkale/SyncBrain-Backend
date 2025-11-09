@@ -1,6 +1,6 @@
-import mongoose, { Types, Schema } from "mongoose";
+import mongoose, { mongo, Types } from "mongoose";
 
-const UserSchema = new Schema({
+const UserSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
@@ -12,4 +12,44 @@ const UserSchema = new Schema({
   },
 });
 
+const ContentSchema = new mongoose.Schema({
+  title: {
+    title: String,
+    require: true,
+  },
+  type: {
+    type: String,
+    require: true,
+  },
+  link: {
+    type: String,
+    require: true,
+  },
+  tags: [
+    {
+      types: Types.ObjectId,
+      ref: "Tag",
+    },
+  ],
+  userId: {
+    types: Types.ObjectId,
+    ref: "User",
+    require: true,
+  },
+});
+
+const LinkSchema = new mongoose.Schema({
+  hash: {
+    type: String,
+    require: true,
+  },
+  userId: {
+    type: mongoose.Types.ObjectId,
+    ref: "User",
+    require: true,
+  },
+});
+
 export const UserModel = mongoose.model("User", UserSchema);
+export const ContentModel = mongoose.model("Content", ContentSchema);
+export const LinkModel = mongoose.model("Share", LinkSchema);
