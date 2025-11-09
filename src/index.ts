@@ -168,11 +168,28 @@ app.get("/api/v1/content", auth, async (req, res) => {
       userId: userId,
     }).populate("userId", "username");
 
+    if (content.length === 0) {
+      res.json({
+        content: [
+          {
+            _id: "default-1",
+            type: "Note",
+            title: "Welcome to SyncBrain!",
+            content:
+              "This is your default content. Start exploring now! click on Add Memory to add more content",
+          },
+        ],
+      });
+      return;
+    }
+
     res.status(200).json({ content });
+    return;
   } catch (error) {
     res.status(500).json({
       message: "Internal Server error",
     });
+    return;
   }
 });
 
