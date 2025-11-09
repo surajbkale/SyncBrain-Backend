@@ -12,33 +12,36 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
-const ContentSchema = new mongoose.Schema({
-  title: {
-    title: String,
-    require: true,
-  },
-  type: {
-    type: String,
-    require: true,
-  },
-  link: {
-    type: String,
-  },
-  content: {
-    type: String,
-  },
-  tags: [
-    {
-      types: Types.ObjectId,
-      ref: "Tag",
+const ContentSchema = new mongoose.Schema(
+  {
+    title: {
+      title: String,
+      require: true,
     },
-  ],
-  userId: {
-    types: Types.ObjectId,
-    ref: "User",
-    require: true,
+    type: {
+      type: String,
+      require: true,
+    },
+    link: {
+      type: String,
+    },
+    content: {
+      type: String,
+    },
+    tags: [
+      {
+        types: Types.ObjectId,
+        ref: "Tag",
+      },
+    ],
+    userId: {
+      types: Types.ObjectId,
+      ref: "User",
+      require: true,
+    },
   },
-});
+  { timestamps: true }
+);
 
 const LinkSchema = new mongoose.Schema({
   hash: {
