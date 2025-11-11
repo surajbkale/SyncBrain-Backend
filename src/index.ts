@@ -3,7 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { Index, Pinecone } from "@pinecone-database/pinecone";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import puppeteer from "puppeteer-core";
+import puppeteer, { Puppeteer } from "puppeteer-core";
 import z from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -104,12 +104,25 @@ async function getEmbedding(text: string): Promise<number[]> {
 // Function to scrape URL content
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
+    // Log the excutable path for debugging
+    console.log(`Using chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
     const browser = await puppeteer.launch({
+      executablePath:
+        process.env.PUPPETTER_EXECUTABLE_PATH || puppeteer.executablePath(),
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--single-process",
+        "--no-zygote",
+        "--diable-dev-shm-usage",
+      ],
     });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 60000,
+    });
 
     // Extract title and content
     const title = await page.title();
@@ -127,8 +140,17 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     await browser.close();
     return { title, content };
   } catch (error) {
-    console.error("Error scraping URL: ", error);
-    return { title: "failed to scrape", content: "Error accessing the URL" };
+    if (error instanceof Error) {
+      console.error("Error scraping URL: ", error.toString(), error.stack);
+    } else {
+      console.error("Error scraping URL: ", error);
+    }
+    return {
+      title: "failed to scrape",
+      content: `Error ${
+        error instanceof Error ? error.toString() : String(error)
+      }`,
+    };
   }
 }
 
