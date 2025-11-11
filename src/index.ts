@@ -302,6 +302,12 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
       if (!titleToSave) titleToSave = ScrapedData.title;
     }
 
+    // Generate timestamp in a human-readable format
+    const timestamp = new Date().toLocaleDateString();
+
+    // Prepare the text for embedding by including title and timestamp
+    const textForEmbedding = `Title: ${titleToSave}\nDate:${timestamp}\nContent: ${contentToSave}`;
+
     const newContent = await ContentModel.create({
       title: titleToSave,
       link: link,
@@ -309,12 +315,10 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
       content: contentToSave,
       tag: [],
       userId: req.userId,
+      createdAt: new Date(),
     });
 
     const embedding = await getEmbedding(contentToSave);
-
-    // Get current timestamp
-    const timestamp = new Date().toISOString();
 
     await pineconeIndex.upsert([
       {
