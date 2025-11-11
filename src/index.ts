@@ -478,8 +478,8 @@ app.post(
           item.type
         }`;
         if (item.link) context += `Link: ${item.link}\n`;
-        context += `Content: ${item.content.substring(0, 300)}${
-          item.content.length > 300 ? "..." : ""
+        context += `Content: ${item.content.substring(0, 1000)}${
+          item.content.length > 1000 ? "..." : ""
         }\n\n`;
       });
 
