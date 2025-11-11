@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { Index, Pinecone } from "@pinecone-database/pinecone";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import puppeteer, { Puppeteer } from "puppeteer-core";
-import z from "zod";
+import z, { unknown } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -104,18 +104,28 @@ async function getEmbedding(text: string): Promise<number[]> {
 // Function to scrape URL content
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
-    // Log the excutable path for debugging
-    console.log(`Using chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+    console.log(`Node environment: ${process.env.NODE_ENV}`);
+    console.log(
+      `Puppetter package version: ${require("puppeteer/package.json").version}`
+    );
+
+    let executablePath;
+    if (process.env.PUPPETTER_EXECUTABLE_PATH) {
+      executablePath = process.env.PUPPETTER_EXECUTABLE_PATH;
+      console.log(`Using chrome at: ${executablePath}`);
+    } else {
+      executablePath = puppeteer.executablePath();
+      console.log(`Using bundled chrome at: ${executablePath}`);
+    }
     const browser = await puppeteer.launch({
-      executablePath:
-        process.env.PUPPETTER_EXECUTABLE_PATH || puppeteer.executablePath(),
+      executablePath,
       headless: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
+        "--diable-dev-shm-usage",
         "--single-process",
         "--no-zygote",
-        "--diable-dev-shm-usage",
       ],
     });
     const page = await browser.newPage();
@@ -140,15 +150,17 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     await browser.close();
     return { title, content };
   } catch (error) {
+    console.error("Error scraping URL: ", error);
+
     if (error instanceof Error) {
-      console.error("Error scraping URL: ", error.toString(), error.stack);
+      console.error(error.stack);
     } else {
-      console.error("Error scraping URL: ", error);
+      console.error("An unknow error occurred", error);
     }
     return {
-      title: "failed to scrape",
-      content: `Error ${
-        error instanceof Error ? error.toString() : String(error)
+      title: "Failed to scrape",
+      content: `Error: ${
+        error instanceof Error ? error.message : "Unknown error"
       }`,
     };
   }
