@@ -313,15 +313,19 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
 
     const embedding = await getEmbedding(contentToSave);
 
+    // Get current timestamp
+    const timestamp = new Date().toISOString();
+
     await pineconeIndex.upsert([
       {
         id: newContent._id.toString(),
         values: embedding,
         metadata: {
-          userId: req.userId?.toString() ?? "",
+          userId: req.userId?.toString() || "",
           title: titleToSave,
           contentType: type,
           snippet: contentToSave.substring(0, 100),
+          timestamp: timestamp,
         },
       },
     ]);
@@ -474,7 +478,7 @@ app.post(
         }\n\n`;
       });
 
-      const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the users sync brain, please provde a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful.`;
+      const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the users sync brain, please provde a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. If any questions asked also try to answer it`;
 
       const result = await model.generateContent({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
