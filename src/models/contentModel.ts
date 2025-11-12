@@ -8,7 +8,6 @@ const ContentSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      required: true,
     },
     link: {
       type: String,
