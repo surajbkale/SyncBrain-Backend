@@ -20,6 +20,7 @@
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/puppeteer": "^5.4.7",
     "@types/uuid": "^10.0.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
