@@ -19,14 +19,6 @@ interface ContentMetadata {
   thumbnail: string | null;
 }
 
-const initBrowser = async () => {
-  return await puppeteer.launch({
-    headless: true,
-    args: ["--ignore-certificate-errors"],
-    timeout: 30000,
-  });
-};
-
 export const handleNote = async (
   title: string,
   content: string

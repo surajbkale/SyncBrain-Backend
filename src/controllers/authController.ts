@@ -42,7 +42,18 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const signin = async (req: Request, res: Response): Promise<void> => {
-  const { username, password } = req.body;
+  const validInput = signinSchema.safeParse(req.body);
+  if (!validInput.success) {
+    const errorMessage = validInput.error.message;
+
+    res.status(411).json({
+      message: errorMessage || "Invalid format",
+      error: errorMessage,
+    });
+    return;
+  }
+
+  const { username, password } = validInput.data;
 
   try {
     const user = await UserModel.findOne({ username });
