@@ -11,7 +11,7 @@ export const config = {
   puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
   nodeEnv: process.env.NODE_ENV || "development",
   cors: {
-    origins: ["https://syncbrain.bitalchemy.app", "http://localhost:5173"],
+    origin: ["https://syncbrain.bitalchemy.app", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE"],
   },
 };
