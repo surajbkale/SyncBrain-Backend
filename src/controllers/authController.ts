@@ -1,0 +1,87 @@
+import { Request, Response } from "express";
+import { UserModel } from "../models";
+import { signinSchema, signupSchema } from "../utils/validation";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { config } from "../config/env";
+import { hash } from "zod";
+
+export const signup = async (req: Request, res: Response): Promise<void> => {
+  const validInput = signupSchema.safeParse(req.body);
+  if (!validInput.success) {
+    const errorMessage = validInput.error.message;
+    res.status(411).json({
+      message: errorMessage || "Invalid format",
+      error: errorMessage,
+    });
+    return;
+  }
+
+  const { username, password } = validInput.data;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  try {
+    const user = await UserModel.findOne({ username });
+    if (!user) {
+      await UserModel.create({
+        username,
+        password: hashedPassword,
+      });
+      res.status(200).json({
+        message: "User Created successfully",
+      });
+    } else {
+      res.status(400).json({
+        message: "Username is taken",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export const signin = async (req: Request, res: Response): Promise<void> => {
+  const { username, password } = req.body;
+
+  const user = await UserModel.findOne({ username });
+  if (!user) {
+    res.status(404).json({
+      message: "User not found",
+    });
+    return;
+  }
+
+  if (user.password) {
+    try {
+      const hashedPassword = await bcrypt.compare(password, user.password);
+
+      if (hashedPassword) {
+        if (user._id) {
+          const token = jwt.sign({ id: user._id }, config.jwtSecret, {
+            expiresIn: "7days",
+          });
+          res.status(200).json({
+            message: "User logged in successfully",
+            token,
+            username,
+          });
+        }
+      } else {
+        res.status(401).json({
+          message: "Invalid credentials",
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        message: "Internal server error",
+      });
+    }
+  } else {
+    res.status(401).json({
+      message: "Invalid credentials",
+    });
+  }
+};
