@@ -241,7 +241,7 @@ app.post("/api/v1/signup", async (req: Request, res: Response) => {
     username: z
       .string()
       .min(3, { message: "Username must be at least 3 characters long" })
-      .max(16, { message: "Username must be at most 16 characters long" }),
+      .max(12, { message: "Username must be at most 12 characters long" }),
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 character long" })
