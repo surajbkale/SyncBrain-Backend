@@ -1,50 +1,18 @@
 #!/usr/bin/env bash
-
-# Make sure script execution doesn't fail
+# Make script exit on first error
 set -e
 
-echo "Installing system dependencies for Puppeteer..."
-apt-get update && apt-get install -y \
-    ca-certificates \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libc6 \
-    libcairo2 \
-    libcups2 \
-    libdbus-1-3 \
-    libexpat1 \
-    libfontconfig1 \
-    libgbm1 \
-    libgcc1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libstdc++6 \
-    libx11-6 \
-    libx11-xcb1 \
-    libxcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
-    lsb-release \
-    wget \
-    xdg-utils
+echo "Starting build process..."
 
+# Create cache directory with appropriate permissions
+echo "Setting up cache directories..."
+mkdir -p ~/.cache
+chmod -R 777 ~/.cache
+
+# Install Node.js dependencies
 echo "Installing Node.js dependencies..."
 npm install
 
-echo "Explicitly installing Chrome for Puppeteer..."
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npx puppeteer browsers install chrome
+# Explicitly install Chrome browser for Puppeteer 24.4.0
+echo "Installing Chrome browser for Puppeteer..."
+npx puppeteer browsers install chrome
