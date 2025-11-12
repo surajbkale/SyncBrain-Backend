@@ -19,145 +19,124 @@ interface ContentMetadata {
   thumbnail: string | null;
 }
 
-export class ContentFetcher {
-  private static async initBrowser() {
-    return await puppeteer.launch({
-      headless: true,
-      args: ["--ignore-certificate-erros"],
-      timeout: 3000,
-    });
-  }
+const initBrowser = async () => {
+  return await puppeteer.launch({
+    headless: true,
+    args: ["--ignore-certificate-errors"],
+    timeout: 30000,
+  });
+};
 
-  static async handleNote(
-    title: string,
-    content: string
-  ): Promise<ContentMetadata> {
+export const handleNote = async (
+  title: string,
+  content: string
+): Promise<ContentMetadata> => {
+  return {
+    title: title || "Untitled Note",
+    content: content || "",
+    thumbnail: null,
+  };
+};
+
+export const fetchYouTube = async (url: string): Promise<ContentMetadata> => {
+  try {
+    const videoId = url.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/
+    )?.[1];
+    if (!videoId) throw new Error("Invalid YouTube URL");
+
+    const response = await axios.get(
+      `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${process.env.YOUTUBE_API_KEY}&part=snippet`
+    );
+
+    const video = response.data.items[0]?.snippet;
+    if (!video) throw new Error("YouTube metadata not found");
+
     return {
-      title: title || "untitled Note",
-      content: content || "",
-      thumbnail: null,
+      title: video.title,
+      content: `${video.description}\n\n${url}`,
+      thumbnail: video.thumbnails.high?.url || null,
     };
+  } catch (error) {
+    console.error("YouTube fetching error:", error);
+    throw error;
   }
+};
 
-  static async fetchYouTube(url: string): Promise<ContentMetadata> {
-    try {
-      const videoId = url.match(
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/
-      )?.[1];
-      if (!videoId) {
-        throw new Error("Invalid YouTube URL");
-      }
+export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
+  const browser = await initBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.waitForSelector("body");
 
-      const response = await axios.get(
-        `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${process.env.YOUTUBE_API_KEY}&part=snippet`
-      );
-
-      const video = response.data.items[0]?.snippet;
-      if (!video) {
-        throw new Error("YouTube metadata not found");
-      }
-
-      return {
-        title: `${video.title}`,
-        content: `## video Description\n\n${video.description}\n\n##Video Link\n${url}`,
-        thumbnail: video.thumbnails.high?.url || null,
-      };
-    } catch (error) {
-      console.error(`YouTube fetching error: ${error}`);
-      throw error;
-    }
-  }
-
-  static async fetchTwitter(url: string): Promise<ContentMetadata> {
-    const browser = await this.initBrowser();
-    try {
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        ` "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"`
-      );
-
-      await page.goto(url, { waitUntil: "networkidle2" });
-      await page.waitForSelector("body");
-
-      const metadata = await page.evaluate(() => {
-        const tweetText = document
+    const metadata = await page.evaluate(() => {
+      const tweetText =
+        document
           .querySelector('article div[data-testid="tweetText"]')
-          ?.textContent?.trim();
-        const author = document
+          ?.textContent?.trim() || "No tweet content";
+      const author =
+        document
           .querySelector('article a[role="link"] span')
-          ?.textContent?.trim();
-        const images = Array.from(
-          document.querySelectorAll('article img[src*="media"]')
-        ).map((img) => img.getAttribute("src"));
+          ?.textContent?.trim() || "Unknown";
+      const image =
+        document
+          .querySelector('article img[src*="media"]')
+          ?.getAttribute("src") || null;
 
-        return {
-          author: author || "Unknown",
-          content: tweetText || "No tweet content available",
-          images: images.filter(Boolean) as string[],
-        };
-      });
+      return { author, tweetText, image };
+    });
 
-      return {
-        title: `Tweet by ${metadata.author}`,
-        content: `${metadata.content}\n\n## Tweet Link\n${url}`,
-        thumbnail: metadata.images[0] || null,
-      };
-    } catch (error) {
-      console.error(`Tweeter fetching error: ${error}`);
-      throw error;
-    } finally {
-      await browser.close();
-    }
+    return {
+      title: `Tweet by ${metadata.author}`,
+      content: `${metadata.tweetText}\n\n${url}`,
+      thumbnail: metadata.image,
+    };
+  } catch (error) {
+    console.error("Twitter fetching error:", error);
+    throw error;
+  } finally {
+    await browser.close();
   }
+};
 
-  static async fetchWebsite(url: string): Promise<ContentMetadata> {
-    const browser = await this.initBrowser();
-    try {
-      const page = await browser.newPage();
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      );
+export const fetchWebsite = async (url: string): Promise<ContentMetadata> => {
+  const browser = await initBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+    await page.goto(url, { waitUntil: "networkidle2" });
+    await page.waitForSelector("body");
 
-      await page.goto(url, {
-        waitUntil: "networkidle2",
-        timeout: 30000,
-      });
+    return await page.evaluate(() => {
+      const title = document.title || "Untitled";
+      const content = document.body.innerText?.trim() || "";
 
-      await page.waitForSelector("body");
+      const ogImage = document
+        .querySelector('meta[property="og:image"]')
+        ?.getAttribute("content");
+      const firstImage = document.querySelector("img")?.getAttribute("src");
 
-      return await page.evaluate(() => {
-        const title = document.title || "No title available";
-        const content = document.body.innerText?.trim() || "";
+      const thumbnail = ogImage || firstImage || null;
+      const absoluteUrl =
+        thumbnail && !thumbnail.startsWith("http")
+          ? new URL(thumbnail, window.location.origin).href
+          : thumbnail;
 
-        const makeAbsoluteUrl = (relativeUrl: string | null) => {
-          if (!relativeUrl) {
-            return null;
-          }
-
-          return relativeUrl.startsWith("http")
-            ? relativeUrl
-            : new URL(relativeUrl, window.location.origin).href;
-        };
-
-        const rawThumbnail =
-          document
-            .querySelector('meta[property="og:image"]')
-            ?.getAttribute("content") ??
-          document.querySelector("img")?.getAttribute("src") ??
-          null;
-
-        const thumbnail = makeAbsoluteUrl(rawThumbnail);
-
-        return { title, content, thumbnail };
-      });
-    } catch (error) {
-      console.error(`Website fetching error: ${error}`);
-      throw error;
-    } finally {
-      await browser.close();
-    }
+      return { title, content, thumbnail: absoluteUrl };
+    });
+  } catch (error) {
+    console.error("Website fetching error:", error);
+    throw error;
+  } finally {
+    await browser.close();
   }
-}
+};
 
 export async function getYoutubeMetadata(
   videoUrl: string
@@ -180,7 +159,7 @@ export async function getYoutubeMetadata(
         video.thumbnails.default.url,
     };
   } catch (error) {
-    console.error(`Youtube api error: ${error}`);
+    console.error("YouTube API Error:", error);
     throw error;
   }
 }
@@ -192,11 +171,12 @@ export async function getTwitterMetadata(
     const tweetId = extractTweetId(tweetUrl);
     const bearerToken = process.env.TWITTER_BEARER_TOKEN?.trim();
 
-    console.log(`Tweet ID: ${tweetId}`);
-    console.log(`Token status: ${bearerToken ? "Present" : "Missing"}`);
+    // Better debug logging
+    console.log("Tweet ID:", tweetId);
+    console.log("Token Status:", bearerToken ? "Present" : "Missing");
 
     if (!bearerToken) {
-      throw new Error(`Twitter Bearer Token is not configured`);
+      throw new Error("Twitter Bearer Token is not configured");
     }
 
     const response = await axios.get(
@@ -213,13 +193,12 @@ export async function getTwitterMetadata(
       }
     );
 
-    console.log(
-      `Twitter API Response: ${{
-        status: response.status,
-        hasData: !!response.data,
-        hasMedia: !!response.data.includes?.media,
-      }}`
-    );
+    // Add response logging
+    console.log("Twitter API Response:", {
+      status: response.status,
+      hasData: !!response.data,
+      hasMedia: !!response.data.includes?.media,
+    });
 
     const mediaUrls =
       response.data.includes?.media?.map((media: any) => {
@@ -232,7 +211,7 @@ export async function getTwitterMetadata(
       mediaUrls,
     };
   } catch (error) {
-    console.error(`Twitter API Error ${error}`);
+    console.error("Twitter API Error:", error);
     throw error;
   }
 }

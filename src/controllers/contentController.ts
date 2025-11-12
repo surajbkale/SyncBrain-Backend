@@ -4,7 +4,12 @@ import { ContentModel } from "../models";
 import { getPineconeIndex } from "../config/pinecone";
 import { getEmbedding } from "../services/embeddings";
 
-import { ContentFetcher } from "../services/mediaHandlers";
+import {
+  fetchYouTube,
+  fetchTwitter,
+  fetchWebsite,
+  handleNote,
+} from "../services/mediaHandlers";
 
 export interface YouTubeMetadata {
   title: string;
@@ -26,18 +31,18 @@ export const addContent = async (
     if (link) {
       // Handle URLs
       if (link.match(/youtube\.com|youtu\.be/i)) {
-        metadata = await ContentFetcher.fetchYouTube(link);
+        metadata = await fetchYouTube(link);
       } else if (link.matches(/twitter\.com|x\.com/i)) {
-        metadata = await ContentFetcher.fetchTwitter(link);
+        metadata = await fetchTwitter(link);
       } else {
-        metadata = await ContentFetcher.fetchWebsite(link);
+        metadata = await fetchWebsite(link);
       }
 
       titleToSave = titleToSave || metadata.title;
       contentToSave = metadata.content;
       imageUrl = metadata.thumbnail;
     } else {
-      metadata = await ContentFetcher.handleNote(titleToSave, contentToSave);
+      metadata = await handleNote(titleToSave, contentToSave);
       titleToSave = metadata.title;
       contentToSave = metadata.content;
     }
