@@ -28,6 +28,7 @@ interface Content {
   content: string;
   tag: string[];
   userId: mongoose.Types.ObjectId;
+  imageUrl?: string;
 }
 
 interface Link {
@@ -47,6 +48,7 @@ interface SearchQuery {
 interface ScrapedData {
   title: string;
   content: string;
+  imageUrl?: string | null;
 }
 
 const app = express();
@@ -101,6 +103,20 @@ async function getEmbedding(text: string): Promise<number[]> {
   }
 }
 
+// Add this helper function near the top with other utility functions
+function isValidImageUrl(url: string | null): boolean {
+  if (!url) return false;
+  // skip blob URLs as they are temporary and won't work when stored
+  if (url.startsWith("blob:")) return false;
+
+  try {
+    new URL(url);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 // Function to scrape URL content
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
@@ -136,6 +152,34 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
 
     // Extract title and content
     const title = await page.title();
+
+    // extract meta images in priority order
+    const metaImage = await page.evaluate(() => {
+      // Priority order for meta images
+      const metaSelectors = [
+        'meta[property="og:image"]',
+        'meta[name="twitter:image"]',
+        'meta[property="og:image:secure_url"]',
+        'meta[itemprop="image"]',
+        'link[rel="image_src"]',
+        'link[rel="icon"]',
+      ];
+
+      for (const selector of metaSelectors) {
+        const element = document.querySelector(selector);
+        const content =
+          element?.getAttribute("content") || element?.getAttribute("href");
+        if (content) return content;
+      }
+      return null;
+    });
+
+    // Make URL absolute and validate
+    const imageUrl = metaImage ? new URL(metaImage, url).toString() : null;
+
+    const finalImageUrl = isValidImageUrl(imageUrl) ? imageUrl : null;
+
+    // extract content
     const content = await page.evaluate(() => {
       // Basic content extraction
       const paragraphs = Array.from(document.querySelectorAll("p")).map(
@@ -148,7 +192,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     });
 
     await browser.close();
-    return { title, content };
+    return { title, content, imageUrl: finalImageUrl };
   } catch (error) {
     console.error("Error scraping URL: ", error);
 
@@ -162,6 +206,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       content: `Error: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
+      imageUrl: null,
     };
   }
 }
@@ -294,31 +339,39 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
   const { link, title, type, content } = req.body;
 
   try {
-    let contentToSave = content;
-    let titleToSave = title;
+    let contentToSave = content || "";
+    let titleToSave = title || "";
+    let imageUrl: string | null = null;
 
     if (type === "Url" && link) {
       const ScrapedData = await scrapeUrl(link);
-      contentToSave = ScrapedData.content;
-      if (!titleToSave) titleToSave = ScrapedData.title;
+
+      if (ScrapedData.content) contentToSave = ScrapedData.content;
+      if (!titleToSave && ScrapedData.title) titleToSave = ScrapedData.title;
+
+      // validate image URL before saving
+      if (ScrapedData.imageUrl && isValidImageUrl(ScrapedData.imageUrl)) {
+        imageUrl = ScrapedData.imageUrl;
+      }
     }
 
     // Generate timestamp in a human-readable format
     const timestamp = new Date().toLocaleDateString();
 
-    // Prepare the text for embedding by including title and timestamp
+    // Prepare the text for embedding (Ensure it's a valid string)
     const textForEmbedding = `Title: ${titleToSave}\nDate:${timestamp}\nContent: ${contentToSave}`;
 
     const newContent = await ContentModel.create({
       title: titleToSave,
-      link: link,
-      type: type,
+      link,
+      type,
       content: contentToSave,
       tag: [],
       userId: req.userId,
       createdAt: new Date(),
     });
 
+    // Generate vector embeddings
     const embedding = await getEmbedding(contentToSave);
 
     await pineconeIndex.upsert([
@@ -329,17 +382,20 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
           userId: req.userId?.toString() || "",
           title: titleToSave,
           contentType: type,
-          snippet: contentToSave.substring(0, 100),
           timestamp: timestamp,
+          snippet: contentToSave.substring(0, 100),
+          imageUrl: imageUrl || "",
         },
       },
     ]);
 
     res.status(200).json({
       message: "Content added successfully",
+      contentId: newContent._id,
+      imageUrl: imageUrl || null,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error adding content: ", error);
     res.status(500).json({
       message: "Internal server error",
     });
@@ -363,12 +419,24 @@ app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
             title: "Welcome to Syncbrain!",
             Content:
               "This is your default content. Start exploring now! click on add memory to add more content",
+            imageUrl: null,
           },
         ],
       });
       return;
     }
-    res.status(200).json({ content });
+    res.status(200).json({
+      content: content.map((item) => ({
+        _id: item._id,
+        title: item.title,
+        type: item.type,
+        content: item.content,
+        link: item.link || null,
+        imageUrl: item.imageUrl || null, // Include imageUrl in the response
+        userId: item.userId,
+        createdAt: item.createdAt,
+      })),
+    });
     return;
   } catch (error) {
     console.log(error);

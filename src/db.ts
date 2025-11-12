@@ -28,6 +28,9 @@ const ContentSchema = new mongoose.Schema(
     content: {
       type: String,
     },
+    imageUrl: {
+      type: String,
+    },
     tags: [
       {
         types: Types.ObjectId,
