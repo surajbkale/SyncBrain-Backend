@@ -26,6 +26,5 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/content", contentRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/share", shareRoutes);
-app.use("/api/v1/:shareLink", shareRoutes);
 
 export default app;
