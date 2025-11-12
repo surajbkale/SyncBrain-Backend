@@ -8,10 +8,11 @@ import z, { unknown } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-import dotenv from "dotenv";
 import { ContentModel, LinkModel, UserModel } from "./db";
 import auth from "./middleware";
-import { random } from "./utils";
+import { v4 as uuidv4 } from "uuid";
+
+import dotenv from "dotenv";
 dotenv.config();
 
 interface User {
@@ -611,7 +612,7 @@ app.post(
         return;
       }
 
-      const hash = random(10);
+      const hash = uuidv4().slice(0, 10);
       await LinkModel.create({
         userId: req.userId,
         hash: hash,
