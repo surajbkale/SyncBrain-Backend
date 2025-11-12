@@ -174,7 +174,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
         'meta[property="og:image:secure_url"]',
         'meta[itemprop="image"]',
         'link[rel="image_src"]',
-        'link[rel="icon"]',
+        // 'link[rel="icon"]',
       ];
 
       for (const selector of metaSelectors) {
